@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+            --sidebar-active: #6366f1;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --input-bg: #f8fafc;
+            --todo-color: #94a3b8;
+            --inprogress-color: #3b82f6;
+            --done-color: #22c55e;
+            --radius: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,.12);
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+        /* ===== AUTH PAGE ===== */
+        #auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+        }
+        .auth-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .auth-logo h1 { font-size: 24px; font-weight: 700; color: var(--primary); }
+        .auth-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        .auth-tabs {
+            display: flex;
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .auth-tab.active { background: var(--card-bg); color: var(--text); box-shadow: var(--shadow); }
+
+        /* ===== APP LAYOUT ===== */
+        #app { display: none; height: 100vh; }
+        .layout { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .sidebar-logo { font-size: 18px; font-weight: 700; color: white; }
+        .sidebar-logo span { color: var(--primary); }
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            margin-bottom: 8px;
+        }
+        .sidebar-avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; color: white; font-size: 14px;
+            flex-shrink: 0;
+        }
+        .sidebar-username { font-size: 13px; font-weight: 600; color: white; }
+        .sidebar-email { font-size: 11px; color: #94a3b8; }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all .15s;
+            user-select: none;
+        }
+        .nav-item:hover { background: var(--sidebar-hover); color: white; }
+        .nav-item.active { border-left-color: var(--primary); background: rgba(99,102,241,.15); color: white; }
+        .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+        .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); }
+
+        /* ===== MAIN CONTENT ===== */
+        .main { overflow-y: auto; display: flex; flex-direction: column; }
+        .section { padding: 28px; display: none; }
+        .section.active { display: block; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .section-title { font-size: 22px; font-weight: 700; }
+        .section-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+            transition: all .15s; text-decoration: none;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: var(--danger-hover); }
+        .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--bg); color: var(--text); }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+        .btn-icon { padding: 6px; border-radius: 6px; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ===== FORMS ===== */
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 8px;
+            background: var(--input-bg); color: var(--text);
+            font-size: 14px; font-family: inherit;
+            transition: border-color .15s;
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 80px; }
+        .form-error { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+
+        /* ===== TASK FILTERS ===== */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-tab {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--card-bg);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .filter-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .filter-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: rgba(255,255,255,.25); font-size: 11px;
+        }
+        .filter-tab:not(.active) .filter-count { background: var(--bg); color: var(--text-muted); }
+
+        /* ===== TASK CARDS ===== */
+        .tasks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .task-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--border);
+            transition: box-shadow .15s, transform .15s;
+            position: relative;
+        }
+        .task-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(-1px); }
+        .task-card.todo { border-left-color: var(--todo-color); }
+        .task-card.in_progress { border-left-color: var(--inprogress-color); }
+        .task-card.done { border-left-color: var(--done-color); }
+        .task-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .task-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+        .task-card.done .task-title { text-decoration: line-through; color: var(--text-muted); }
+        .task-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .task-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .task-deadline { font-size: 12px; color: var(--text-muted); }
+        .task-deadline.overdue { color: var(--danger); font-weight: 500; }
+        .task-actions { display: flex; gap: 4px; }
+        .status-badge {
+            display: inline-flex; align-items: center;
+            padding: 3px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600; white-space: nowrap;
+        }
+        .badge-todo { background: #f1f5f9; color: #64748b; }
+        .badge-in_progress { background: #eff6ff; color: #3b82f6; }
+        .badge-done { background: #f0fdf4; color: #22c55e; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 15px; }
+
+        /* ===== CARDS / PANELS ===== */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+        .info-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-size: 13px; color: var(--text-muted); }
+        .info-value { font-size: 14px; font-weight: 500; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat-box { background: var(--bg); border-radius: 8px; padding: 14px; text-align: center; }
+        .stat-number { font-size: 26px; font-weight: 700; }
+        .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .stat-todo .stat-number { color: var(--todo-color); }
+        .stat-inprogress .stat-number { color: var(--inprogress-color); }
+        .stat-done .stat-number { color: var(--done-color); }
+        .stat-overdue .stat-number { color: var(--danger); }
+        .stat-total .stat-number { color: var(--primary); }
+        .migration-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .migration-item:last-child { border-bottom: none; }
+        .migration-version { background: var(--primary); color: white; border-radius: 4px; padding: 2px 8px; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+        .migration-desc { flex: 1; color: var(--text); }
+        .migration-date { color: var(--text-muted); flex-shrink: 0; }
+        .actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.5); z-index: 1000;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 28px;
+            width: 480px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .modal-title { font-size: 17px; font-weight: 700; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px; }
+        .modal-close:hover { color: var(--text); }
+        .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+        /* ===== TOAST ===== */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            padding: 12px 16px; border-radius: 8px; color: white;
+            font-size: 14px; min-width: 240px; max-width: 360px;
+            box-shadow: var(--shadow-lg); animation: slideIn .2s ease;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--primary); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ===== CONFIRM ===== */
+        .confirm-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.5); z-index: 1100;
+            align-items: center; justify-content: center;
+        }
+        .confirm-overlay.open { display: flex; }
+        .confirm-box {
+            background: var(--card-bg); border-radius: 12px; padding: 24px;
+            width: 340px; box-shadow: var(--shadow-lg); text-align: center;
+        }
+        .confirm-icon { font-size: 36px; margin-bottom: 12px; }
+        .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .confirm-msg { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+        .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+
+        /* ===== LOADER ===== */
+        .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-placeholder { text-align: center; padding: 40px; color: var(--text-muted); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .tasks-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== AUTH PAGE ===== -->
+<div id="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h1>&#10003; Task Manager</h1>
+            <p>Görevlerinizi organize edin</p>
+        </div>
+        <div class="auth-tabs">
+            <button class="auth-tab active" onclick="switchAuthTab('login')">Giriş Yap</button>
+            <button class="auth-tab" onclick="switchAuthTab('register')">Kayıt Ol</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="login-username" placeholder="kullanici_adi" required>
+            </div>
+            <div class="form-group">
+                <label>Şifre</label>
+                <input type="password" id="login-password" placeholder="••••••" required>
+            </div>
+            <div id="login-error" class="form-error"></div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" id="login-btn">
+                Giriş Yap
+            </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" style="display:none" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="reg-username" placeholder="kullanici_adi" required minlength="3">
+            </div>
+            <div class="form-group">
+                <label>E-posta</label>
+                <input type="email" id="reg-email" placeholder="ornek@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>Şifre</label>
+                <input type="password" id="reg-password" placeholder="En az 6 karakter" required minlength="6">
+            </div>
+            <div id="register-error" class="form-error"></div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" id="register-btn">
+                Kayıt Ol
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app">
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">&#10003; <span>Task</span>Manager</div>
+            </div>
+            <div class="sidebar-user">
+                <div class="sidebar-avatar" id="sidebar-avatar">?</div>
+                <div>
+                    <div class="sidebar-username" id="sidebar-username">-</div>
+                    <div class="sidebar-email" id="sidebar-email">-</div>
+                </div>
+            </div>
+            <nav>
+                <div class="nav-item active" onclick="showSection('tasks')" id="nav-tasks">
+                    <span class="nav-icon">&#128203;</span> Görevlerim
+                </div>
+                <div class="nav-item" onclick="showSection('profile')" id="nav-profile">
+                    <span class="nav-icon">&#128100;</span> Profil
+                </div>
+                <div class="nav-item" onclick="showSection('admin')" id="nav-admin">
+                    <span class="nav-icon">&#128200;</span> Veritabanı
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="handleLogout()">
+                    &#8594; Çıkış Yap
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+
+            <!-- ===== TASKS SECTION ===== -->
+            <div class="section active" id="section-tasks">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Görevlerim</div>
+                        <div class="section-subtitle" id="tasks-subtitle">Tüm görevleriniz</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="openTaskModal()">
+                        &#43; Yeni Görev
+                    </button>
+                </div>
+
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="setFilter('all')" id="filter-all">
+                        Tümü <span class="filter-count" id="count-all">0</span>
+                    </button>
+                    <button class="filter-tab" onclick="setFilter('TODO')" id="filter-todo">
+                        Yapılacak <span class="filter-count" id="count-todo">0</span>
+                    </button>
+                    <button class="filter-tab" onclick="setFilter('IN_PROGRESS')" id="filter-inprogress">
+                        Devam Ediyor <span class="filter-count" id="count-inprogress">0</span>
+                    </button>
+                    <button class="filter-tab" onclick="setFilter('DONE')" id="filter-done">
+                        Tamamlandı <span class="filter-count" id="count-done">0</span>
+                    </button>
+                </div>
+
+                <div id="tasks-container">
+                    <div class="loading-placeholder">Yükleniyor...</div>
+                </div>
+            </div>
+
+            <!-- ===== PROFILE SECTION ===== -->
+            <div class="section" id="section-profile">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Profil</div>
+                        <div class="section-subtitle">Hesap bilgileriniz ve ayarlar</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Hesap Bilgileri</div>
+                    <div class="info-row">
+                        <span class="info-label">Kullanıcı ID</span>
+                        <span class="info-value" id="profile-id">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Kullanıcı Adı</span>
+                        <span class="info-value" id="profile-username">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">E-posta</span>
+                        <span class="info-value" id="profile-email">-</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Şifre Değiştir</div>
+                    <form onsubmit="handleChangePassword(event)">
+                        <div class="form-group">
+                            <label>Mevcut Şifre</label>
+                            <input type="password" id="old-password" placeholder="••••••" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Yeni Şifre</label>
+                            <input type="password" id="new-password" placeholder="En az 6 karakter" required minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>Yeni Şifre (Tekrar)</label>
+                            <input type="password" id="new-password-confirm" placeholder="••••••" required>
+                        </div>
+                        <div id="pw-error" class="form-error"></div>
+                        <button type="submit" class="btn btn-primary" id="pw-btn">
+                            Şifreyi Güncelle
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ===== ADMIN SECTION ===== -->
+            <div class="section" id="section-admin">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Veritabanı Yönetimi</div>
+                        <div class="section-subtitle">İstatistikler ve bakım</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="loadAdminData()">&#8635; Yenile</button>
+                </div>
+
+                <!-- Stats -->
+                <div class="card">
+                    <div class="card-title">Görev İstatistikleri</div>
+                    <div class="stats-grid">
+                        <div class="stat-box stat-total">
+                            <div class="stat-number" id="stat-total">-</div>
+                            <div class="stat-label">Toplam</div>
+                        </div>
+                        <div class="stat-box stat-todo">
+                            <div class="stat-number" id="stat-todo">-</div>
+                            <div class="stat-label">Yapılacak</div>
+                        </div>
+                        <div class="stat-box stat-inprogress">
+                            <div class="stat-number" id="stat-inprogress">-</div>
+                            <div class="stat-label">Devam Ediyor</div>
+                        </div>
+                        <div class="stat-box stat-done">
+                            <div class="stat-number" id="stat-done">-</div>
+                            <div class="stat-label">Tamamlandı</div>
+                        </div>
+                        <div class="stat-box stat-overdue">
+                            <div class="stat-number" id="stat-overdue">-</div>
+                            <div class="stat-label">Gecikmiş</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DB Size + Actions -->
+                <div class="card">
+                    <div class="card-title">Veritabanı Durumu</div>
+                    <div class="info-row">
+                        <span class="info-label">Boyut</span>
+                        <span class="info-value" id="db-size">-</span>
+                    </div>
+                    <div style="margin-top:16px">
+                        <div class="card-title" style="margin-bottom:10px;font-size:13px">Bakım İşlemleri</div>
+                        <div class="actions-row">
+                            <button class="btn btn-ghost" onclick="runDbAction('vacuum')" id="btn-vacuum">
+                                &#128465; VACUUM
+                            </button>
+                            <button class="btn btn-ghost" onclick="runDbAction('analyze')" id="btn-analyze">
+                                &#128269; ANALYZE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Migrations -->
+                <div class="card">
+                    <div class="card-title">Uygulanan Migration'lar</div>
+                    <div id="migrations-list">
+                        <div class="loading-placeholder">Yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ===== TASK MODAL ===== -->
+<div class="modal-overlay" id="task-modal-overlay" onclick="closeTaskModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title" id="modal-title">Yeni Görev</div>
+            <button class="modal-close" onclick="closeTaskModal()">&#x2715;</button>
+        </div>
+        <form onsubmit="handleTaskSubmit(event)">
+            <div class="form-group">
+                <label>Başlık *</label>
+                <input type="text" id="task-title-input" placeholder="Görev başlığı" required maxlength="200">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <textarea id="task-desc-input" placeholder="Görev açıklaması (opsiyonel)" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Son Tarih</label>
+                <input type="datetime-local" id="task-deadline-input">
+            </div>
+            <div class="form-group" id="task-status-group" style="display:none">
+                <label>Durum</label>
+                <select id="task-status-input">
+                    <option value="TODO">Yapılacak</option>
+                    <option value="IN_PROGRESS">Devam Ediyor</option>
+                    <option value="DONE">Tamamlandı</option>
+                </select>
+            </div>
+            <div id="task-modal-error" class="form-error"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeTaskModal()">İptal</button>
+                <button type="submit" class="btn btn-primary" id="task-submit-btn">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== CONFIRM DIALOG ===== -->
+<div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-box">
+        <div class="confirm-icon">&#128465;</div>
+        <div class="confirm-title">Görevi Sil</div>
+        <div class="confirm-msg" id="confirm-msg">Bu görevi silmek istediğinize emin misiniz?</div>
+        <div class="confirm-btns">
+            <button class="btn btn-ghost" onclick="closeConfirm()">İptal</button>
+            <button class="btn btn-danger" id="confirm-ok-btn">Sil</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toast-container"></div>
+
+<script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    let currentUser = null;
+    let allTasks = [];
+    let currentFilter = 'all';
+    let editingTaskId = null;
+    let confirmCallback = null;
+
+    // ============================================================
+    // API HELPER
+    // ============================================================
+    const AUTH_PATHS = ['/api/auth/login', '/api/auth/register'];
+
+    async function api(method, path, body) {
+        const opts = {
+            method,
+            credentials: 'include',
+            headers: {}
+        };
+        if (body !== undefined) {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(path, opts);
+        if (res.status === 204) return null;
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) {
+            // Auth endpoint'leri için sunucu hata mesajını göster
+            if (AUTH_PATHS.includes(path)) {
+                const msg = data?.message || 'Kullanıcı adı veya şifre yanlış';
+                throw new Error(msg);
+            }
+            // Diğer endpoint'lerde oturum süresi dolmuş
+            showAuthPage();
+            throw new Error('Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+        }
+        if (!res.ok) {
+            const msg = data?.message || data?.error || `Hata (${res.status})`;
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    function switchAuthTab(tab) {
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const tabs = document.querySelectorAll('.auth-tab');
+        if (tab === 'login') {
+            loginForm.style.display = '';
+            registerForm.style.display = 'none';
+            tabs[0].classList.add('active');
+            tabs[1].classList.remove('active');
+        } else {
+            loginForm.style.display = 'none';
+            registerForm.style.display = '';
+            tabs[0].classList.remove('active');
+            tabs[1].classList.add('active');
+        }
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const btn = document.getElementById('login-btn');
+        const errEl = document.getElementById('login-error');
+        errEl.style.display = 'none';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span>';
+        try {
+            const data = await api('POST', '/api/auth/login', {
+                username: document.getElementById('login-username').value.trim(),
+                password: document.getElementById('login-password').value
+            });
+            currentUser = data;
+            showApp();
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Giriş Yap';
+        }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        const btn = document.getElementById('register-btn');
+        const errEl = document.getElementById('register-error');
+        errEl.style.display = 'none';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span>';
+        try {
+            const data = await api('POST', '/api/auth/register', {
+                username: document.getElementById('reg-username').value.trim(),
+                email: document.getElementById('reg-email').value.trim(),
+                password: document.getElementById('reg-password').value
+            });
+            currentUser = data;
+            showApp();
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Kayıt Ol';
+        }
+    }
+
+    async function handleLogout() {
+        try { await api('POST', '/api/auth/logout'); } catch (_) {}
+        currentUser = null;
+        allTasks = [];
+        showAuthPage();
+        toast('Çıkış yapıldı', 'info');
+    }
+
+    // ============================================================
+    // PAGE SWITCHING
+    // ============================================================
+    function showAuthPage() {
+        document.getElementById('auth-page').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('login-username').value = '';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-error').style.display = 'none';
+    }
+
+    function showApp() {
+        document.getElementById('auth-page').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        updateSidebarUser();
+        loadTasks();
+        showSection('tasks');
+    }
+
+    function updateSidebarUser() {
+        if (!currentUser) return;
+        const initial = (currentUser.username || '?')[0].toUpperCase();
+        document.getElementById('sidebar-avatar').textContent = initial;
+        document.getElementById('sidebar-username').textContent = currentUser.username;
+        document.getElementById('sidebar-email').textContent = currentUser.email;
+        document.getElementById('profile-id').textContent = '#' + currentUser.id;
+        document.getElementById('profile-username').textContent = currentUser.username;
+        document.getElementById('profile-email').textContent = currentUser.email;
+    }
+
+    function showSection(name) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('section-' + name).classList.add('active');
+        document.getElementById('nav-' + name).classList.add('active');
+        if (name === 'admin') loadAdminData();
+    }
+
+    // ============================================================
+    // TASKS
+    // ============================================================
+    async function loadTasks() {
+        const container = document.getElementById('tasks-container');
+        container.innerHTML = '<div class="loading-placeholder">Görevler yükleniyor...</div>';
+        try {
+            allTasks = await api('GET', '/api/tasks');
+            renderTasks();
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state"><p>Görevler yüklenemedi: ${err.message}</p></div>`;
+        }
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        const idMap = { all: 'filter-all', TODO: 'filter-todo', IN_PROGRESS: 'filter-inprogress', DONE: 'filter-done' };
+        document.getElementById(idMap[filter]).classList.add('active');
+        renderTasks();
+    }
+
+    function renderTasks() {
+        const counts = { all: allTasks.length, TODO: 0, IN_PROGRESS: 0, DONE: 0 };
+        allTasks.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
+        document.getElementById('count-all').textContent = counts.all;
+        document.getElementById('count-todo').textContent = counts.TODO;
+        document.getElementById('count-inprogress').textContent = counts.IN_PROGRESS;
+        document.getElementById('count-done').textContent = counts.DONE;
+
+        const filtered = currentFilter === 'all' ? allTasks : allTasks.filter(t => t.status === currentFilter);
+        const subtitleMap = { all: 'Tüm görevler', TODO: 'Yapılacak görevler', IN_PROGRESS: 'Devam eden görevler', DONE: 'Tamamlanan görevler' };
+        document.getElementById('tasks-subtitle').textContent = subtitleMap[currentFilter];
+
+        const container = document.getElementById('tasks-container');
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">&#128203;</div><p>Bu kategoride görev yok.<br>Yeni bir görev eklemek için "Yeni Görev" butonuna tıklayın.</p></div>`;
+            return;
+        }
+
+        container.innerHTML = `<div class="tasks-grid">${filtered.map(renderTaskCard).join('')}</div>`;
+    }
+
+    function renderTaskCard(task) {
+        const statusClass = task.status.toLowerCase().replace('_', '_');
+        const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam Ediyor', DONE: 'Tamamlandı' };
+        const badgeClass = { TODO: 'badge-todo', IN_PROGRESS: 'badge-in_progress', DONE: 'badge-done' };
+
+        let deadlineHtml = '';
+        if (task.deadline) {
+            const dl = new Date(task.deadline);
+            const now = new Date();
+            const isOverdue = dl < now && task.status !== 'DONE';
+            const formatted = dl.toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+            deadlineHtml = `<span class="task-deadline ${isOverdue ? 'overdue' : ''}">&#128197; ${isOverdue ? '&#9888; ' : ''}${formatted}</span>`;
+        }
+
+        const descHtml = task.description
+            ? `<div class="task-desc">${escHtml(task.description)}</div>`
+            : '';
+
+        return `
+        <div class="task-card ${statusClass}" id="task-${task.id}">
+            <div class="task-card-header">
+                <div class="task-title">${escHtml(task.title)}</div>
+                <span class="status-badge ${badgeClass[task.status]}">${statusLabels[task.status]}</span>
+            </div>
+            ${descHtml}
+            <div class="task-meta">
+                ${deadlineHtml}
+                <div class="task-actions">
+                    <button class="btn btn-ghost btn-sm btn-icon" title="Düzenle" onclick="openEditModal(${task.id})">&#9998;</button>
+                    <button class="btn btn-danger btn-sm btn-icon" title="Sil" onclick="confirmDelete(${task.id}, '${escHtml(task.title).replace(/'/g,"\\'")}')">&#128465;</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ============================================================
+    // TASK MODAL
+    // ============================================================
+    function openTaskModal() {
+        editingTaskId = null;
+        document.getElementById('modal-title').textContent = 'Yeni Görev';
+        document.getElementById('task-title-input').value = '';
+        document.getElementById('task-desc-input').value = '';
+        document.getElementById('task-deadline-input').value = '';
+        document.getElementById('task-status-group').style.display = 'none';
+        document.getElementById('task-modal-error').style.display = 'none';
+        document.getElementById('task-submit-btn').textContent = 'Oluştur';
+        document.getElementById('task-modal-overlay').classList.add('open');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function openEditModal(taskId) {
+        const task = allTasks.find(t => t.id === taskId);
+        if (!task) return;
+        editingTaskId = taskId;
+        document.getElementById('modal-title').textContent = 'Görevi Düzenle';
+        document.getElementById('task-title-input').value = task.title;
+        document.getElementById('task-desc-input').value = task.description || '';
+        document.getElementById('task-deadline-input').value = task.deadline
+            ? task.deadline.slice(0, 16) : '';
+        document.getElementById('task-status-input').value = task.status;
+        document.getElementById('task-status-group').style.display = '';
+        document.getElementById('task-modal-error').style.display = 'none';
+        document.getElementById('task-submit-btn').textContent = 'Kaydet';
+        document.getElementById('task-modal-overlay').classList.add('open');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function closeTaskModal(e) {
+        if (e && e.target !== document.getElementById('task-modal-overlay')) return;
+        document.getElementById('task-modal-overlay').classList.remove('open');
+        editingTaskId = null;
+    }
+
+    async function handleTaskSubmit(e) {
+        e.preventDefault();
+        const errEl = document.getElementById('task-modal-error');
+        const btn = document.getElementById('task-submit-btn');
+        errEl.style.display = 'none';
+
+        const title = document.getElementById('task-title-input').value.trim();
+        const description = document.getElementById('task-desc-input').value.trim() || null;
+        const deadlineRaw = document.getElementById('task-deadline-input').value;
+        const deadline = deadlineRaw ? deadlineRaw + ':00' : null;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span>';
+
+        try {
+            if (editingTaskId) {
+                const status = document.getElementById('task-status-input').value;
+                await api('PUT', `/api/tasks/${editingTaskId}`, { title, description, deadline, status });
+                toast('Görev güncellendi', 'success');
+            } else {
+                await api('POST', '/api/tasks', { title, description, deadline });
+                toast('Görev oluşturuldu', 'success');
+            }
+            document.getElementById('task-modal-overlay').classList.remove('open');
+            loadTasks();
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = editingTaskId ? 'Kaydet' : 'Oluştur';
+        }
+    }
+
+    // ============================================================
+    // DELETE CONFIRM
+    // ============================================================
+    function confirmDelete(taskId, taskTitle) {
+        document.getElementById('confirm-msg').textContent = `"${taskTitle}" görevini silmek istediğinize emin misiniz?`;
+        document.getElementById('confirm-overlay').classList.add('open');
+        const okBtn = document.getElementById('confirm-ok-btn');
+        okBtn.onclick = async () => {
+            closeConfirm();
+            try {
+                await api('DELETE', `/api/tasks/${taskId}`);
+                allTasks = allTasks.filter(t => t.id !== taskId);
+                renderTasks();
+                toast('Görev silindi', 'success');
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        };
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('open');
+    }
+
+    // ============================================================
+    // PROFILE / PASSWORD
+    // ============================================================
+    async function handleChangePassword(e) {
+        e.preventDefault();
+        const errEl = document.getElementById('pw-error');
+        const btn = document.getElementById('pw-btn');
+        errEl.style.display = 'none';
+
+        const oldPw = document.getElementById('old-password').value;
+        const newPw = document.getElementById('new-password').value;
+        const newPw2 = document.getElementById('new-password-confirm').value;
+
+        if (newPw !== newPw2) {
+            errEl.textContent = 'Yeni şifreler eşleşmiyor';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span>';
+
+        try {
+            await api('POST', '/api/auth/change-password', { oldPassword: oldPw, newPassword: newPw });
+            toast('Şifre başarıyla değiştirildi', 'success');
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('new-password-confirm').value = '';
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Şifreyi Güncelle';
+        }
+    }
+
+    // ============================================================
+    // ADMIN / DB
+    // ============================================================
+    async function loadAdminData() {
+        try {
+            const [stats, size, migrations] = await Promise.all([
+                api('GET', '/api/admin/db/stats'),
+                api('GET', '/api/admin/db/size'),
+                api('GET', '/api/admin/db/migrations')
+            ]);
+
+            const tasks = stats.tasks || {};
+            document.getElementById('stat-total').textContent = stats.totalTasks ?? '-';
+            document.getElementById('stat-todo').textContent = tasks.TODO ?? 0;
+            document.getElementById('stat-inprogress').textContent = tasks.IN_PROGRESS ?? 0;
+            document.getElementById('stat-done').textContent = tasks.DONE ?? 0;
+            document.getElementById('stat-overdue').textContent = stats.overdueTasks ?? 0;
+
+            const kb = size.kb?.toFixed(1) ?? '?';
+            const mb = size.mb?.toFixed(3) ?? '?';
+            document.getElementById('db-size').textContent = `${size.bytes ?? '?'} B (${kb} KB / ${mb} MB)`;
+
+            const migList = document.getElementById('migrations-list');
+            if (!migrations || migrations.length === 0) {
+                migList.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Migration bulunamadı</p>';
+            } else {
+                migList.innerHTML = migrations.map(m => `
+                    <div class="migration-item">
+                        <span class="migration-version">V${m.version}</span>
+                        <span class="migration-desc">${escHtml(m.description || '')}</span>
+                        <span class="migration-date">${m.applied_at ? new Date(m.applied_at).toLocaleDateString('tr-TR') : ''}</span>
+                    </div>
+                `).join('');
+            }
+        } catch (err) {
+            toast('İstatistikler yüklenemedi: ' + err.message, 'error');
+        }
+    }
+
+    async function runDbAction(action) {
+        const btn = document.getElementById('btn-' + action);
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader" style="border-top-color:#333"></span>';
+        try {
+            const result = await api('POST', `/api/admin/db/${action}`);
+            toast(result?.message || `${action.toUpperCase()} tamamlandı`, 'success');
+            await loadAdminData();
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = action === 'vacuum' ? '🗑️ VACUUM' : '🔍 ANALYZE';
+        }
+    }
+
+    // ============================================================
+    // TOAST
+    // ============================================================
+    function toast(msg, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => {
+            el.style.animation = 'slideIn .2s ease reverse';
+            setTimeout(() => el.remove(), 200);
+        }, 3000);
+    }
+
+    // ============================================================
+    // KEYBOARD
+    // ============================================================
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeTaskModal();
+            closeConfirm();
+        }
+    });
+
+    // ============================================================
+    // INIT — check session on page load
+    // ============================================================
+    (async function init() {
+        try {
+            currentUser = await api('GET', '/api/auth/me');
+            showApp();
+        } catch (_) {
+            showAuthPage();
+        }
+    })();
+</script>
+</body>
+</html>
